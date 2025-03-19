@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package jdk.jpackage.internal;
 import jdk.internal.util.OperatingSystem;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -213,7 +211,8 @@ public class Arguments {
             Map<String, ? super Object> args = new HashMap<>();
 
             // load .properties file
-            Map<String, String> initialMap = getPropertiesFromFile(popArg());
+            Map<String, String> initialMap =
+                IOUtils.getPropertiesFromFile(Path.of(popArg()));
 
             putUnlessNull(args, StandardBundlerParam.FA_EXTENSIONS.getID(),
                     initialMap.get(FA_EXTENSIONS));
@@ -748,23 +747,6 @@ public class Arguments {
         return option;
     }
 
-    static Map<String, String> getPropertiesFromFile(String filename) {
-        Map<String, String> map = new HashMap<>();
-        // load properties file
-        Properties properties = new Properties();
-        try (Reader reader = Files.newBufferedReader(Path.of(filename))) {
-            properties.load(reader);
-        } catch (IOException e) {
-            Log.error("Exception: " + e.getMessage());
-        }
-
-        for (final String name: properties.stringPropertyNames()) {
-            map.put(name, properties.getProperty(name));
-        }
-
-        return map;
-    }
-
     static List<String> getArgumentList(String inputString) {
         List<String> list = new ArrayList<>();
         if (inputString == null || inputString.isEmpty()) {
@@ -794,7 +776,7 @@ public class Arguments {
         }
     }
 
-    private static String unquoteIfNeeded(String in) {
+    public static String unquoteIfNeeded(String in) {
         if (in == null) {
             return null;
         }

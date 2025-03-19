@@ -47,6 +47,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import static jdk.jpackage.test.AdditionalLauncher.forEachAdditionalLauncher;
+import jdk.jpackage.internal.Arguments;
+import jdk.jpackage.internal.IOUtils;
 import jdk.jpackage.internal.util.function.ThrowingConsumer;
 import jdk.jpackage.internal.util.function.ThrowingFunction;
 import jdk.jpackage.internal.util.function.ThrowingRunnable;
@@ -214,7 +216,40 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     public String version() {
-        return getArgumentValue("--app-version", () -> "1.0");
+        if (isRuntime()) {
+            String appVersion = getArgumentValue("--app-image");
+            if (appVersion != null) {
+                return appVersion;
+            } else {
+                Path runtimePath = Path.of(getArgumentValue("--runtime-image"));
+                Path releasePath = null;
+                // Try special case for macOS first. "Contents/Home/release"
+                if (TKit.isOSX()) {
+                    releasePath = runtimePath.resolve("Contents/Home/release");
+                    if (!Files.exists(releasePath)) {
+                        releasePath = null;
+                    }
+                }
+
+            // Try root for all platforms including macOS.
+            if (releasePath == null) {
+                releasePath = runtimePath.resolve("release");
+                if (!Files.exists(releasePath)) {
+                    releasePath = null;
+                }
+            }
+
+            String releaseVersion = null;
+            if (releasePath != null) {
+                releaseVersion = IOUtils.getPropertyFromFile(releasePath, "JAVA_VERSION");
+                releaseVersion = Arguments.unquoteIfNeeded(releaseVersion);
+            }
+
+            return releaseVersion == null ? appVersion : releaseVersion;
+            }
+        } else {
+            return getArgumentValue("--app-version", () -> "1.0");
+        }
     }
 
     public String name() {
@@ -908,6 +943,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
 
         final Path lookupPath = AppImageFile.getPathInAppImage(appImageDir);
         if (isRuntime() || (!isImagePackageType() && !TKit.isOSX())) {
+            System.out.println("AMDEBUG lookupPath: " + lookupPath);
             assertFileInAppImage(lookupPath, null);
         } else if (!TKit.isOSX()) {
             assertFileInAppImage(lookupPath, lookupPath);
@@ -956,6 +992,8 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     private void assertFileInAppImage(Path filename, Path expectedPath) {
+        System.out.println("AMDEBUG filename: " + filename);
+        System.out.println("AMDEBUG expectedPath: " + expectedPath);
         if (filename.getNameCount() > 1) {
             assertFileInAppImage(filename.getFileName(), expectedPath);
             return;
