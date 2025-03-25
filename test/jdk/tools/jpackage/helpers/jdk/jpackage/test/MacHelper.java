@@ -312,7 +312,7 @@ public final class MacHelper {
             installLocation = cmd.getArgumentValue("--install-dir", () -> defaultInstallLocation, Path::of);
         }
 
-        return installLocation.resolve(cmd.name() + (cmd.isRuntime() ? "" : ".app"));
+        return installLocation.resolve(cmd.name() + (cmd.isRuntime() ? ".jdk" : ".app"));
     }
 
     static Path getUninstallCommand(JPackageCommand cmd) {
@@ -448,6 +448,9 @@ public final class MacHelper {
     ).map(Path::of).collect(toSet());
 
     private static final Set<Path> RUNTIME_BUNDLE_CONTENTS = Stream.of(
-            "Home"
+            "Home",
+            "MacOS",
+            "Info.plist",
+            "_CodeSignature"
     ).map(Path::of).collect(toSet());
 }

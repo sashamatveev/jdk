@@ -33,6 +33,9 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.NoSuchElementException;
+import java.util.stream.Stream;
+
 import static jdk.jpackage.internal.StandardBundlerParam.APP_NAME;
 import static jdk.jpackage.internal.StandardBundlerParam.INSTALLER_NAME;
 import static jdk.jpackage.internal.StandardBundlerParam.INSTALL_DIR;
@@ -219,10 +222,18 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
                 Files.createDirectories(path1);
                 FileUtils.copyRecursive(runtimeImage, path1);
 
-                Path path2 = newRoot.resolve("Contents/MacOS/libjli.dylib");
-                Path linJLIPath = runtimeImage.resolve("lib/libjli.dylib");
-                Files.createDirectories(path2.getParent());
-                Files.copy(linJLIPath, path2);
+                // Copy libjli.dylib library
+                Path path2 = Files.createDirectories(
+                    newRoot.resolve("Contents/MacOS"));
+
+                final Path jliName = Path.of("libjli.dylib");
+                try (Stream<Path> walk = Files.walk(runtimeImage.resolve("lib"))) {
+                    final Path jli = walk
+                        .filter(file -> file.getFileName().equals(jliName))
+                        .findFirst()
+                        .get();
+                    Files.copy(jli, path2.resolve(jliName));
+                }
 
                 // Use same Info.plist as for our runtime inside app bundle
                 MacAppImageBuilder.writeRuntimeImageInfoPlist(
@@ -268,10 +279,19 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
         return false;
     }
 
-    // JDK image: "lib/libjli.dylib"
+    // JDK image: "lib/*/libjli.dylib"
     private boolean isRuntimeImageJDKImage(Path runtimeImage) {
-        Path path1 = runtimeImage.resolve("lib/libjli.dylib");
-        return IOUtils.exists(path1);
+        final Path jliName = Path.of("libjli.dylib");
+        try (Stream<Path> walk = Files.walk(runtimeImage.resolve("lib"))) {
+            final Path jli = walk
+                    .filter(file -> file.getFileName().equals(jliName))
+                    .findFirst()
+                    .get();
+            return IOUtils.exists(jli);
+        } catch (IOException | NoSuchElementException ex) {
+            Log.verbose(ex);
+            return false;
+        }
     }
 
     @Override

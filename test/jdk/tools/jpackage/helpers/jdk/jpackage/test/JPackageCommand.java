@@ -921,11 +921,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
             TKit.assertDirectoryExists(cmd.appRuntimeDirectory());
             if (TKit.isOSX()) {
                 var libjliPath = cmd.appRuntimeDirectory().resolve("Contents/MacOS/libjli.dylib");
-                if (cmd.isRuntime()) {
-                    TKit.assertPathExists(libjliPath, false);
-                } else {
-                    TKit.assertFileExists(libjliPath);
-                }
+                TKit.assertFileExists(libjliPath);
             }
         }),
         MAC_BUNDLE_STRUCTURE(cmd -> {
@@ -979,7 +975,6 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
 
         final Path lookupPath = AppImageFile.getPathInAppImage(appImageDir);
         if (isRuntime() || (!isImagePackageType() && !TKit.isOSX())) {
-            System.out.println("AMDEBUG lookupPath: " + lookupPath);
             assertFileInAppImage(lookupPath, null);
         } else if (!TKit.isOSX()) {
             assertFileInAppImage(lookupPath, lookupPath);
@@ -1028,8 +1023,6 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     private void assertFileInAppImage(Path filename, Path expectedPath) {
-        System.out.println("AMDEBUG filename: " + filename);
-        System.out.println("AMDEBUG expectedPath: " + expectedPath);
         if (filename.getNameCount() > 1) {
             assertFileInAppImage(filename.getFileName(), expectedPath);
             return;
