@@ -42,7 +42,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -70,6 +69,8 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         args.addAll(cmd.args);
         withToolProvider = cmd.withToolProvider;
         saveConsoleOutput = cmd.saveConsoleOutput;
+        discardStdout = cmd.discardStdout;
+        discardStderr = cmd.discardStderr;
         suppressOutput = cmd.suppressOutput;
         ignoreDefaultRuntime = cmd.ignoreDefaultRuntime;
         ignoreDefaultVerbose = cmd.ignoreDefaultVerbose;
@@ -409,7 +410,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
             String dirName;
             if (!TKit.isOSX()) {
                 dirName = name();
-            } else if (hasArgument("--app-image") && hasArgument("--mac-sign")) {
+            } else if (MacHelper.signPredefinedAppImage(this)) {
                 // Request to sign external app image, not to build a new one
                 dirName = getArgumentValue("--app-image");
             } else {
@@ -715,6 +716,18 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return this;
     }
 
+    public JPackageCommand discardStdout(boolean v) {
+        verifyMutable();
+        discardStdout = v;
+        return this;
+    }
+
+    public JPackageCommand discardStderr(boolean v) {
+        verifyMutable();
+        discardStderr = v;
+        return this;
+    }
+
     public JPackageCommand dumpOutput(boolean v) {
         verifyMutable();
         suppressOutput = !v;
@@ -806,6 +819,7 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     private Executor createExecutor() {
         Executor exec = new Executor()
                 .saveOutput(saveConsoleOutput).dumpOutput(!suppressOutput)
+                .discardStdout(discardStdout).discardStderr(discardStderr)
                 .setDirectory(executeInDirectory)
                 .addArguments(args);
 
@@ -895,6 +909,32 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return this;
     }
 
+    public static enum Macro {
+        APPDIR(cmd -> {
+            return cmd.appLayout().appDirectory().toString();
+        }),
+        BINDIR(cmd -> {
+            return cmd.appLayout().launchersDirectory().toString();
+        }),
+        ROOTDIR(cmd -> {
+            return (cmd.isImagePackageType() ? cmd.outputBundle() : cmd.appInstallationDirectory()).toString();
+        });
+
+        private Macro(Function<JPackageCommand, String> getValue) {
+            this.getValue = Objects.requireNonNull(getValue);
+        }
+
+        String value(JPackageCommand cmd) {
+            return getValue.apply(cmd);
+        }
+
+        private final Function<JPackageCommand, String> getValue;
+    }
+
+    public String macroValue(Macro macro) {
+        return macro.value(this);
+    }
+
     public static enum AppLayoutAssert {
         APP_IMAGE_FILE(JPackageCommand::assertAppImageFile),
         PACKAGE_FILE(JPackageCommand::assertPackageFile),
@@ -967,6 +1007,27 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return this;
     }
 
+    private boolean expectAppImageFile() {
+        if (isRuntime()) {
+            return false;
+        }
+
+        if (TKit.isOSX()) {
+            if (MacHelper.signPredefinedAppImage(this)) {
+                // Request to sign external app image, ".jpackage.xml" file should exist.
+                return true;
+            }
+
+            if (!isImagePackageType() && hasArgument("--app-image")) {
+                // Build native macOS package from an external app image.
+                // If the external app image is signed, ".jpackage.xml" file should be kept, otherwise removed.
+                return AppImageFile.load(Path.of(getArgumentValue("--app-image"))).macSigned();
+            }
+        }
+
+        return isImagePackageType();
+    }
+
     private void assertAppImageFile() {
         Path appImageDir = Path.of("");
         if (isImagePackageType() && hasArgument("--app-image")) {
@@ -974,31 +1035,26 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         }
 
         final Path lookupPath = AppImageFile.getPathInAppImage(appImageDir);
-        if (isRuntime() || (!isImagePackageType() && !TKit.isOSX())) {
+        if (!expectAppImageFile()) {
             assertFileInAppImage(lookupPath, null);
-        } else if (!TKit.isOSX()) {
-            assertFileInAppImage(lookupPath, lookupPath);
         } else {
             assertFileInAppImage(lookupPath, lookupPath);
 
-            // If file exist validated important values based on arguments
-            // Exclude validation when we generating packages from predefined
-            // app images, since we do not know if image is signed or not.
-            if (isImagePackageType() || !hasArgument("--app-image")) {
+            if (TKit.isOSX()) {
                 final Path rootDir = isImagePackageType() ? outputBundle() :
                         pathToUnpackedPackageFile(appInstallationDirectory());
 
                 AppImageFile aif = AppImageFile.load(rootDir);
 
-                boolean expectedValue = hasArgument("--mac-sign");
+                boolean expectedValue = MacHelper.appImageSigned(this);
                 boolean actualValue = aif.macSigned();
-                TKit.assertEquals(Boolean.toString(expectedValue), Boolean.toString(actualValue),
-                    "Check for unexptected value in app image file for <signed>");
+                TKit.assertEquals(expectedValue, actualValue,
+                    "Check for unexpected value of <signed> property in app image file");
 
                 expectedValue = hasArgument("--mac-app-store");
                 actualValue = aif.macAppStore();
-                TKit.assertEquals(Boolean.toString(expectedValue), Boolean.toString(actualValue),
-                    "Check for unexptected value in app image file for <app-store>");
+                TKit.assertEquals(expectedValue, actualValue,
+                    "Check for unexpected value of <app-store> property in app image file");
             }
         }
     }
@@ -1068,11 +1124,17 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     JPackageCommand winMsiLogFile(Path v) {
+        if (!TKit.isWindows()) {
+            throw new UnsupportedOperationException();
+        }
         this.winMsiLogFile = v;
         return this;
     }
 
     public Optional<Path> winMsiLogFile() {
+        if (!TKit.isWindows()) {
+            throw new UnsupportedOperationException();
+        }
         return Optional.ofNullable(winMsiLogFile);
     }
 
@@ -1183,16 +1245,20 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }
 
     public static Stream<String> stripTimestamps(Stream<String> stream) {
-        // [HH:mm:ss.SSS]
-        final Pattern timestampRegexp = Pattern.compile(
-                "^\\[\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\] ");
-        return stream.map(str -> {
-            Matcher m = timestampRegexp.matcher(str);
-            if (m.find()) {
-                str = str.substring(m.end());
-            }
+        return stream.map(JPackageCommand::stripTimestamp);
+    }
+
+    public static String stripTimestamp(String str) {
+        final var m = TIMESTAMP_REGEXP.matcher(str);
+        if (m.find()) {
+            return str.substring(m.end());
+        } else {
             return str;
-        });
+        }
+    }
+
+    public static boolean withTimestamp(String str) {
+        return TIMESTAMP_REGEXP.matcher(str).find();
     }
 
     @Override
@@ -1252,6 +1318,8 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
 
     private Boolean withToolProvider;
     private boolean saveConsoleOutput;
+    private boolean discardStdout;
+    private boolean discardStderr;
     private boolean suppressOutput;
     private boolean ignoreDefaultRuntime;
     private boolean ignoreDefaultVerbose;
@@ -1288,4 +1356,8 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
     }).get();
 
     private static final String UNPACKED_PATH_ARGNAME = "jpt-unpacked-folder";
+
+    // [HH:mm:ss.SSS]
+    private static final Pattern TIMESTAMP_REGEXP = Pattern.compile(
+            "^\\[\\d\\d:\\d\\d:\\d\\d.\\d\\d\\d\\] ");
 }
