@@ -215,31 +215,12 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
                 appDir = runtimeImage;
             } else {
                 // It is a valid JDK image, so convert it to JDK bundle.
-                Path newRoot = Files.createTempDirectory(TEMP_ROOT.fetchFrom(params),
+                Path jdkBundleRoot = Files.createTempDirectory(TEMP_ROOT.fetchFrom(params),
                     "root-");
 
-                Path path1 = newRoot.resolve("Contents/Home");
-                Files.createDirectories(path1);
-                FileUtils.copyRecursive(runtimeImage, path1);
+                convertJDKImageToJDKBundle(jdkBundleRoot, runtimeImage, params);
 
-                // Copy libjli.dylib library
-                Path path2 = Files.createDirectories(
-                    newRoot.resolve("Contents/MacOS"));
-
-                final Path jliName = Path.of("libjli.dylib");
-                try (Stream<Path> walk = Files.walk(runtimeImage.resolve("lib"))) {
-                    final Path jli = walk
-                        .filter(file -> file.getFileName().equals(jliName))
-                        .findFirst()
-                        .get();
-                    Files.copy(jli, path2.resolve(jliName));
-                }
-
-                // Use same Info.plist as for our runtime inside app bundle
-                MacAppImageBuilder.writeRuntimeImageInfoPlist(
-                    newRoot.resolve("Contents/Info.plist"), params);
-
-                appDir = newRoot;
+                appDir = jdkBundleRoot;
             }
 
             // Figure out if we need to sign
@@ -260,6 +241,30 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
         }
 
         return appDir;
+    }
+
+    public static void convertJDKImageToJDKBundle(Path jdkBundleRoot,
+            Path runtimeImage,
+            Map<String, ? super Object> params) throws IOException {
+        Path path1 = jdkBundleRoot.resolve("Contents/Home");
+        Files.createDirectories(path1);
+        FileUtils.copyRecursive(runtimeImage, path1);
+
+        // Copy libjli.dylib library
+        Path path2 = Files.createDirectories(
+                jdkBundleRoot.resolve("Contents/MacOS"));
+
+        final Path jliName = Path.of("libjli.dylib");
+        try (Stream<Path> walk = Files.walk(runtimeImage.resolve("lib"))) {
+            final Path jli = walk
+                    .filter(file -> file.getFileName().equals(jliName))
+                    .findFirst()
+                    .get();
+            Files.copy(jli, path2.resolve(jliName));
+        }
+
+        MacAppImageBuilder.writeRuntimeImageInfoPlist(
+                jdkBundleRoot.resolve("Contents/Info.plist"), params);
     }
 
     // JDK bundle: "Contents/Home", "Contents/MacOS/libjli.dylib"
