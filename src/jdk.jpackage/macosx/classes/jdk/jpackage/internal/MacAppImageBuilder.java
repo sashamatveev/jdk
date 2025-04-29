@@ -877,7 +877,7 @@ public class MacAppImageBuilder extends AbstractAppImageBuilder {
                     && !(p.toString().contains("dylib.dSYM/Contents"))
                     && !(p.toString().endsWith(appExecutable))
             ).forEach(p -> {
-                System.out.println("AMDEBUG p: " + p);
+                //System.out.println("AMDEBUG p: " + p);
                 // noinspection ThrowableResultOfMethodCallIgnored
                 if (toThrow.get() != null) {
                     return;
@@ -961,7 +961,7 @@ public class MacAppImageBuilder extends AbstractAppImageBuilder {
         }
 
         // sign the app itself
-        System.out.println("AMDEBUG appLocation: " + appLocation);
+        //System.out.println("AMDEBUG appLocation: " + appLocation);
         List<String> args = getCodesignArgs(true, appLocation, signingIdentity,
                 identifierPrefix, entitlements, keyChain);
         ProcessBuilder pb = new ProcessBuilder(args);

@@ -287,6 +287,7 @@ public class MacDmgBundler extends MacBaseInstallerBundler {
                 + ".dmg");
 
         Path srcFolder = appLocation.getParent();
+        //System.out.println("AMDEBUG isRuntimeInstaller: " + StandardBundlerParam.isRuntimeInstaller(params));
         if (StandardBundlerParam.isRuntimeInstaller(params)) {
             Path newRoot = Files.createTempDirectory(TEMP_ROOT.fetchFrom(params),
                     "root-");
@@ -299,6 +300,8 @@ public class MacDmgBundler extends MacBaseInstallerBundler {
             if (!dest.getFileName().endsWith(".jdk")) {
                 dest = dest.resolveSibling(dest.getFileName() + ".jdk");
             }
+
+            //System.out.println("AMDEBUG appLocation: " + appLocation + " dest: " + dest);
 
             FileUtils.copyRecursive(appLocation, dest);
 
@@ -389,6 +392,8 @@ public class MacDmgBundler extends MacBaseInstallerBundler {
                 Files.createDirectory(destPath);
                 FileUtils.copyRecursive(srcFolder, destPath);
             } else {
+                //System.out.println("AMDEBUG srcFolder: " + srcFolder);
+                //System.out.println("AMDEBUG mountedRoot: " + mountedRoot);
                 FileUtils.copyRecursive(srcFolder, mountedRoot);
             }
         }

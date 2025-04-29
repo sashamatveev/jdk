@@ -166,7 +166,7 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
                             "warning.unsigned.app.image"), getID()));
                 }
             }
-        } else if (PREDEFINED_RUNTIME_IMAGE.fetchFrom(params) != null) {
+        } else if (StandardBundlerParam.isRuntimeInstaller(params)) {
             // Call appImageBundler.validate(params); to validate signing
             // requirements.
             appImageBundler.validate(params);
@@ -213,7 +213,7 @@ public abstract class MacBaseInstallerBundler extends AbstractBundler {
                 // need to re-sign it after modification.
                 MacAppImageBuilder.signAppBundle(params, appDir, "-", null, null);
             }
-        } else if (runtimeImage != null) {
+        } else if (StandardBundlerParam.isRuntimeInstaller(params)) {
             if (isRuntimeImageJDKBundle(runtimeImage)) {
                 appDir = runtimeImage;
             } else {
