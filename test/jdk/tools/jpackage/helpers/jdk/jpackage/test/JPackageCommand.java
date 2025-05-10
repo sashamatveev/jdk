@@ -241,21 +241,29 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
                     }
                 }
 
-            // Try root for all platforms including macOS.
-            if (releasePath == null) {
-                releasePath = runtimePath.resolve("release");
-                if (!Files.exists(releasePath)) {
-                    releasePath = null;
+                // Try root for all platforms including macOS.
+                if (releasePath == null) {
+                    releasePath = runtimePath.resolve("release");
+                    if (!Files.exists(releasePath)) {
+                        releasePath = null;
+                    }
                 }
-            }
 
-            String releaseVersion = null;
-            if (releasePath != null) {
-                releaseVersion = IOUtils.getPropertyFromFile(releasePath, "JAVA_VERSION");
-                releaseVersion = Arguments.unquoteIfNeeded(releaseVersion);
-            }
+                String releaseVersion = null;
+                if (releasePath != null) {
+                    releaseVersion = IOUtils.getPropertyFromFile(releasePath, "JAVA_VERSION");
+                    releaseVersion = Arguments.unquoteIfNeeded(releaseVersion);
+                }
 
-            return releaseVersion == null ? appVersion : releaseVersion;
+                if (releaseVersion == null) {
+                    if (appVersion == null) {
+                        return "1.0";
+                    } else {
+                        return appVersion;
+                    }
+                } else {
+                    return releaseVersion;
+                }
             }
         } else {
             return getArgumentValue("--app-version", () -> "1.0");
