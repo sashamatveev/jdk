@@ -231,10 +231,7 @@ final class MacFromOptions {
         if (!APP_VERSION.containsIn(options)) {
             // User didn't explicitly specify the version on the command line. jpackage derived it from the input.
             // In this case it should ensure the derived value is valid MacOS version.
-            UnaryOperator<String> versionNormalizer = version -> {
-                return normalizeVersion(version);
-            };
-            app = ApplicationBuilder.normalizeVersion(app, app.version(), versionNormalizer);
+            app = ApplicationBuilder.normalizeVersion(app, app.version(), MacFromOptions::normalizeVersion);
         }
 
         final var appBuilder = new MacApplicationBuilder(app);
@@ -358,11 +355,6 @@ final class MacFromOptions {
         // When reading from release file it can be 1 or 3 or maybe more.
         // We will always normalize to 3 components if needed.
         DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() > 3) {
-            return ver.trim(3).pad(3).toComponentsString();
-        } else {
-            // We should drop any characters. For example: "-ea".
-            return ver.toComponentsString();
-        }
+        return ver.trim(3).toComponentsString();
     }
 }

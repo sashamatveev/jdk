@@ -44,41 +44,43 @@ public class RuntimeVersionReaderTest {
 
     @ParameterizedTest
     @CsvSource({
-        "27.1.2, true",
-        "27.1.2, false",
-        "27.1.2-ea, true",
-        "27.1.2-ea, false"
+        "\"27.1.2\"",
+        "27.1.2",
+        "\"27.1.2-ea\"",
+        "27.1.2-ea",
+        "\"27.1.2+15\"",
+        "27.1.2+15"
     })
-    public void test_release_file_with_version(String version,
-            boolean quoteVersion, @TempDir Path workdir) {
+    public void test_release_file_with_version(String version, @TempDir Path workdir) {
         final var value = RuntimeVersionReader.readVersion(
-                createPropFileWithValue(workdir, "JAVA_VERSION", version, quoteVersion));
+                createPropFileWithValue(workdir, "JAVA_VERSION", version));
         assertTrue(value.isPresent());
         value.ifPresent(val -> {
-            assertEquals(version, value.get().toString());
+            // Version return by readVersion is always unquoted
+            String expectedVersion = version.replaceAll("^\"|\"$", "");
+            assertEquals(expectedVersion, value.get().toString());
         });
     }
 
     @ParameterizedTest
     @CsvSource({
-        "7.1.2+foo, true",
-        "foo, true",
-        "'', true",
-        "7.1.2+foo, false",
-        "foo, false",
-        "'', false"
+        "\"7.1.2+foo\"",
+        "\"foo\"",
+        "\"\"",
+        "7.1.2+foo",
+        "foo",
+        "''"
     })
-    public void test_release_file_with_invalid_version(String version,
-            boolean quoteVersion, @TempDir Path workdir) {
+    public void test_release_file_with_invalid_version(String version, @TempDir Path workdir) {
         final var value = RuntimeVersionReader.readVersion(
-                createPropFileWithValue(workdir, "JAVA_VERSION", version, quoteVersion));
+                createPropFileWithValue(workdir, "JAVA_VERSION", version));
         assertFalse(value.isPresent());
     }
 
     @Test
     public void test_release_file_without_version(@TempDir Path workdir) {
         final var value = RuntimeVersionReader.readVersion(
-                createPropFileWithValue(workdir, "JDK_VERSION", "27.1.2", true));
+                createPropFileWithValue(workdir, "JDK_VERSION", "\"27.1.2\""));
         assertFalse(value.isPresent());
     }
 
@@ -88,15 +90,10 @@ public class RuntimeVersionReaderTest {
         assertFalse(value.isPresent());
     }
 
-    private Path createPropFileWithValue(Path workdir, String name, String value,
-                boolean quoteValue) {
+    private Path createPropFileWithValue(Path workdir, String name, String value) {
         Path releaseFile = workdir.resolve("release");
         Properties props = new Properties();
-        if (quoteValue) {
-            props.setProperty(name, "\"" + value + "\"");
-        } else {
-            props.setProperty(name, value);
-        }
+        props.setProperty(name, value);
 
         try (Writer writer = Files.newBufferedWriter(releaseFile)) {
             props.store(writer, null);

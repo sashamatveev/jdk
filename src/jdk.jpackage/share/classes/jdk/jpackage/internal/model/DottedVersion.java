@@ -37,12 +37,11 @@ import java.util.stream.Stream;
 public final class DottedVersion {
 
     private DottedVersion(String version, boolean greedy) {
-        this.value = version;
         if (version.isEmpty()) {
             if (greedy) {
                 throw new IllegalArgumentException(I18N.getString("error.version-string-empty"));
             } else {
-                this.components = new BigInteger[0];
+                this.components = new Component[0];
                 this.suffix = "";
             }
         } else {
@@ -58,7 +57,7 @@ public final class DottedVersion {
                         }
 
                         try {
-                            return new BigInteger(digits);
+                            return new Component(digits);
                         } catch (NumberFormatException ex) {
                             if (!greedy) {
                                 return null;
@@ -68,12 +67,17 @@ public final class DottedVersion {
                                         digits));
                             }
                         }
-                    }).takeWhile(Objects::nonNull).toArray(BigInteger[]::new);
+                    }).takeWhile(Objects::nonNull).toArray(Component[]::new);
             suffix = ds.getUnprocessedString();
             if (!suffix.isEmpty() && greedy) {
                 ds.throwException();
             }
         }
+    }
+
+    private DottedVersion(Component[] components, String suffix) {
+        this.components = components;
+        this.suffix = suffix;
     }
 
     private static class DigitsSupplier {
@@ -211,9 +215,31 @@ public final class DottedVersion {
         return Arrays.deepEquals(this.components, other.components);
     }
 
+    public DottedVersion trim(int limit) {
+        if (limit < 0) {
+            throw new IllegalArgumentException();
+        } else if (limit >= components.length) {
+            return this;
+        } else {
+            return new DottedVersion(Arrays.copyOf(components, limit), suffix);
+        }
+    }
+
+    public DottedVersion pad(int limit) {
+        if (limit < 0) {
+            throw new IllegalArgumentException();
+        } else if (limit <= components.length) {
+            return this;
+        } else {
+            var newComponents = Arrays.copyOf(components, limit);
+            Arrays.fill(newComponents, components.length, newComponents.length, Component.ZERO);
+            return new DottedVersion(newComponents, suffix);
+        }
+    }
+
     @Override
     public String toString() {
-        return value;
+        return Stream.of(components).map(Component::toString).collect(Collectors.joining(".")) + suffix;
     }
 
     public String getUnprocessedSuffix() {
@@ -221,35 +247,7 @@ public final class DottedVersion {
     }
 
     public String toComponentsString() {
-        return Stream.of(components).map(BigInteger::toString).collect(Collectors.joining("."));
-    }
-
-    public DottedVersion trim(int componentLimit) {
-        if (componentLimit < 0) {
-            throw new IllegalArgumentException();
-        }
-
-        if (components.length > componentLimit) {
-            components = Arrays.stream(components).limit(componentLimit)
-                    .toArray(BigInteger[]::new);
-        }
-
-        return this;
-    }
-
-    public DottedVersion pad(int componentLimit) {
-        if (componentLimit <= 0) {
-            throw new IllegalArgumentException();
-        }
-
-        if (components.length < componentLimit) {
-            final int origLength = components.length;
-            components = Arrays.copyOf(components, componentLimit);
-            Arrays.fill(components, origLength, components.length,
-                    new BigInteger("0"));
-        }
-
-        return this;
+        return Stream.of(components).map(Component::parsedValue).map(BigInteger::toString).collect(Collectors.joining("."));
     }
 
     public int getComponentsCount() {
@@ -257,10 +255,27 @@ public final class DottedVersion {
     }
 
     public BigInteger[] getComponents() {
-        return components;
+        return Stream.of(components).map(Component::parsedValue).toArray(BigInteger[]::new);
     }
 
-    private BigInteger[] components;
-    private final String value;
+    private record Component(BigInteger parsedValue, String strValue) {
+        Component {
+            Objects.requireNonNull(parsedValue);
+            Objects.requireNonNull(strValue);
+        }
+
+        Component(String strValue) {
+            this(new BigInteger(strValue), strValue);
+        }
+
+        @Override
+        public String toString() {
+            return strValue;
+        }
+
+        static final Component ZERO = new Component(BigInteger.ZERO, "0");
+    }
+
+    private final Component[] components;
     private final String suffix;
 }

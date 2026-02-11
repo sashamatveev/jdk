@@ -61,7 +61,7 @@ public class WindowsHelper {
         // Windows requires 2 or 4 components version string.
         // We will always normalize to 4 components if needed.
         DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() != 2 || ver.getComponentsCount() != 4) {
+        if (ver.getComponentsCount() != 2 && ver.getComponentsCount() != 4) {
             return ver.trim(4).pad(4).toComponentsString();
         } else {
             return ver.toComponentsString();

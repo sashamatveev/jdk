@@ -86,10 +86,7 @@ final class WinFromOptions {
         if (!APP_VERSION.containsIn(options)) {
             // User didn't explicitly specify the version on the command line. jpackage derived it from the input.
             // In this case it should ensure the derived value is valid Windows version.
-            UnaryOperator<String> versionNormalizer = version -> {
-                return normalizeVersion(version);
-            };
-            app = ApplicationBuilder.normalizeVersion(app, app.version(), versionNormalizer);
+            app = ApplicationBuilder.normalizeVersion(app, app.version(), WinFromOptions::normalizeVersion);
         }
 
         return WinApplication.create(app);
@@ -137,7 +134,7 @@ final class WinFromOptions {
         // When reading from release file it can be 1 or 3 or maybe more.
         // We will always normalize to 4 components if needed.
         DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() != 2 || ver.getComponentsCount() != 4) {
+        if (ver.getComponentsCount() != 2 && ver.getComponentsCount() != 4) {
             return ver.trim(4).pad(4).toComponentsString();
         } else {
             // We should drop any characters. For example: "-ea".

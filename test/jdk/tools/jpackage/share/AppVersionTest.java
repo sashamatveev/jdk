@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,12 +62,24 @@ public final class AppVersionTest {
                 "3.3"}},
             {"7.8", "com.other/com.other.Hello", new String[]{"--app-version",
                 "4", "--app-version", "7.8"}},
-            // Pick version from jar
-            {"3.10.17", "com.other/com.other.Hello@3.10.17", null},
             // Ignore version in jar if --app-version given
             {"7.5.81", "com.other/com.other.Hello@3.10.17", new String[]{
                 "--app-version", "7.5.81"}}
         }));
+
+        if (TKit.isWindows()) {
+            // Windows will normalize unsupproted number of components
+            // for jar, module or release file versions.
+            data.addAll(List.of(new Object[][]{
+                // Pick version from jar
+                {"3.10.17.0", "com.other/com.other.Hello@3.10.17", null},
+            }));
+        } else {
+            data.addAll(List.of(new Object[][]{
+                // Pick version from jar
+                {"3.10.17", "com.other/com.other.Hello@3.10.17", null},
+            }));
+        }
 
         return data;
     }

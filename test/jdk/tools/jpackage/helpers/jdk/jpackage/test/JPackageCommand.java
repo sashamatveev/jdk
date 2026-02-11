@@ -248,6 +248,11 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
         return getArgumentValue("--input", () -> null, Path::of);
     }
 
+    private boolean isLinuxRpmPackageType() {
+        return TKit.isLinux() && (PackageType.LINUX_RPM == getArgumentValue("--type",
+                () -> null, PACKAGE_TYPES::get));
+    }
+
     public String version() {
         return Optional.ofNullable(getArgumentValue("--app-version")).or(() -> {
             if (isRuntime()) {
@@ -259,6 +264,8 @@ public class JPackageCommand extends CommandArguments<JPackageCommand> {
                         return WindowsHelper.getNormalizedVersion(releaseVersion.toString());
                     } else if (TKit.isOSX()) {
                         return MacHelper.getNormalizedVersion(releaseVersion.toString());
+                    } else if (isLinuxRpmPackageType()) {
+                        return LinuxHelper.getNormalizedRpmVersion(releaseVersion.toString());
                     } else {
                         return releaseVersion.toString();
                     }

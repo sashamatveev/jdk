@@ -116,6 +116,26 @@ public class RuntimePackageTest {
     }
 
     @Test
+    @Parameter(value = {"foo"})
+    @Parameter(value = {""})
+    @Parameter(value = {"17.21.3+foo"})
+    public static void testInvalidReleaseFileVersion(String version) {
+        testReleaseFileVersion(version, false, Optional.empty());
+    }
+
+    @Test
+    @Parameter(value = {"17.21.3-ea", "LINUX_DEB"}, ifOS = LINUX)
+    public static void testValidReleaseFileVersion(String version, PackageType... packageTypes) {
+        testReleaseFileVersion(version, true, Optional.empty(), packageTypes);
+    }
+
+    @Test
+    @Parameter(value = {"17.21.3-ea", "17.21.3", "LINUX_RPM"}, ifOS = LINUX)
+    public static void testValidReleaseFileVersion(String version, String normalizedVersion, PackageType... packageTypes) {
+        testReleaseFileVersion(version, true, Optional.of(normalizedVersion), packageTypes);
+    }
+
+    @Test
     // 27
     @Parameter(value = {"27"}, ifOS = {LINUX, MACOS})
     // 27.1
@@ -126,10 +146,8 @@ public class RuntimePackageTest {
     @Parameter(value = {"27.1.2.3"}, ifOS = {LINUX, WINDOWS})
     // 27.1.2.3.4
     @Parameter(value = {"27.1.2.3.4"}, ifOS = LINUX)
-    // 17.21.3-ea
-    @Parameter(value = {"17.21.3-ea"}, ifOS = LINUX)
-    public static void testReleaseFileVersion(String version) {
-        testReleaseFileVersion(version, version);
+    public static void testValidReleaseFileVersion(String version) {
+        testReleaseFileVersion(version, true, Optional.empty());
     }
 
     @Test
@@ -145,9 +163,18 @@ public class RuntimePackageTest {
     // 17.21.3-ea
     @Parameter(value = {"17.21.3-ea", "17.21.3"}, ifOS = MACOS)
     @Parameter(value = {"17.21.3-ea", "17.21.3.0"}, ifOS = WINDOWS)
-    public static void testReleaseFileVersion(String version, String normalizedVersion) {
-        new PackageTest()
-        .addInitializer(cmd -> {
+    public static void testValidReleaseFileVersion(String version, String normalizedVersion) {
+        testReleaseFileVersion(version, true, Optional.of(normalizedVersion));
+    }
+
+    private static void testReleaseFileVersion(String version,
+            boolean validReleaseFileVersion, Optional<String> normalizedVersion,
+            PackageType... packageTypes) {
+        var test = new PackageTest();
+        if (packageTypes.length != 0) {
+            test.forTypes(packageTypes);
+        }
+        test.addInitializer(cmd -> {
             // Remove --input parameter from jpackage command line as we don't
             // create input directory in the test and jpackage fails
             // if --input references non existant directory.
@@ -167,15 +194,17 @@ public class RuntimePackageTest {
                 props.store(writer, null);
             }
 
-            // Validate output
-            cmd.validateOutput(JPackageStringBundle.MAIN
-                    .cannedFormattedString("message.release-version",
-                    version, runtimeImage.toString()));
-            // Normalization message is only printed if we did normalization.
-            if (!version.equals(normalizedVersion)) {
+            // Validate output only if release version is valid for release file
+            if (validReleaseFileVersion) {
                 cmd.validateOutput(JPackageStringBundle.MAIN
-                    .cannedFormattedString("message.version-normalized",
-                    normalizedVersion, version));
+                        .cannedFormattedString("message.release-version",
+                        version, runtimeImage.toString()));
+                // Normalization message is only printed if we did normalization.
+                normalizedVersion.ifPresent(nv -> {
+                    cmd.validateOutput(JPackageStringBundle.MAIN
+                        .cannedFormattedString("message.version-normalized",
+                        nv, version));
+                });
             }
         })
         // Just create package. It is enough to verify version in bundle name.
