@@ -27,6 +27,7 @@ package jdk.jpackage.internal;
 import static jdk.jpackage.internal.FromOptions.buildApplicationBuilder;
 import static jdk.jpackage.internal.FromOptions.createPackageBuilder;
 import static jdk.jpackage.internal.LinuxPackagingPipeline.APPLICATION_LAYOUT;
+import static jdk.jpackage.internal.cli.StandardBundlingOperation.CREATE_LINUX_RPM;
 import static jdk.jpackage.internal.cli.StandardOption.APP_VERSION;
 import static jdk.jpackage.internal.cli.StandardOption.LINUX_APP_CATEGORY;
 import static jdk.jpackage.internal.cli.StandardOption.LINUX_DEB_MAINTAINER_EMAIL;
@@ -52,10 +53,6 @@ import jdk.jpackage.internal.model.StandardPackageType;
 final class LinuxFromOptions {
 
     static LinuxApplication createLinuxApplication(Options options) {
-        return createLinuxApplication(options, Optional.empty());
-    }
-
-    static LinuxApplication createLinuxApplication(Options options, Optional<StandardPackageType> type) {
 
         final var launcherFromOptions = new LauncherFromOptions().faWithDefaultDescription();
 
@@ -78,11 +75,9 @@ final class LinuxFromOptions {
         if (!APP_VERSION.containsIn(options)) {
             // User didn't explicitly specify the version on the command line. jpackage derived it from the input.
             // In this case it should ensure the derived value is valid RPM version.
-            if (type.isPresent()) {
-                if (type.get().equals(LINUX_RPM)) {
-                    app = ApplicationBuilder.normalizeVersion(app, app.version(),
-                            LinuxFromOptions::normalizeRpmVersion);
-                }
+            if (OptionUtils.bundlingOperation(options) == CREATE_LINUX_RPM) {
+                app = ApplicationBuilder.normalizeVersion(app, app.version(),
+                        LinuxFromOptions::normalizeRpmVersion);
             }
         }
 
@@ -120,7 +115,7 @@ final class LinuxFromOptions {
 
     private static LinuxPackageBuilder createLinuxPackageBuilder(Options options, LinuxSystemEnvironment sysEnv, StandardPackageType type) {
 
-        final var app = createLinuxApplication(options, Optional.of(type));
+        final var app = createLinuxApplication(options);
 
         final var superPkgBuilder = createPackageBuilder(options, app, type);
 

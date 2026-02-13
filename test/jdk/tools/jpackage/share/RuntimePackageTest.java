@@ -39,6 +39,7 @@ import jdk.jpackage.test.Annotations.Parameter;
 import jdk.jpackage.test.Annotations.Test;
 import jdk.jpackage.test.JPackageCommand;
 import jdk.jpackage.test.JPackageStringBundle;
+import jdk.jpackage.test.JPackageOutputValidator;
 import jdk.jpackage.test.LinuxHelper;
 import jdk.jpackage.test.MacHelper;
 import jdk.jpackage.test.PackageTest;
@@ -116,14 +117,6 @@ public class RuntimePackageTest {
     }
 
     @Test
-    @Parameter(value = {"foo"})
-    @Parameter(value = {""})
-    @Parameter(value = {"17.21.3+foo"})
-    public static void testInvalidReleaseFileVersion(String version) {
-        testReleaseFileVersion(version, false, Optional.empty());
-    }
-
-    @Test
     @Parameter(value = {"17.21.3-ea", "LINUX_DEB"}, ifOS = LINUX)
     public static void testValidReleaseFileVersion(String version, PackageType... packageTypes) {
         testReleaseFileVersion(version, true, Optional.empty(), packageTypes);
@@ -136,35 +129,38 @@ public class RuntimePackageTest {
     }
 
     @Test
+    // Invalid versions
+    @Parameter(value = {"foo", "1.0"})
+    @Parameter(value = {"", "1.0"})
+    @Parameter(value = {"17.21.3+foo", "1.0"})
     // 27
     @Parameter(value = {"27"}, ifOS = {LINUX, MACOS})
+    @Parameter(value = {"27", "27.0.0.0"}, ifOS = WINDOWS)
     // 27.1
     @Parameter(value = {"27.1"})
     // 27.1.2
-    @Parameter(value = {"27.1.2"}, ifOS = {LINUX, MACOS})
+    @Parameter(value = {"27.1.2"})
     // 27.1.2.3
     @Parameter(value = {"27.1.2.3"}, ifOS = {LINUX, WINDOWS})
-    // 27.1.2.3.4
-    @Parameter(value = {"27.1.2.3.4"}, ifOS = LINUX)
-    public static void testValidReleaseFileVersion(String version) {
-        testReleaseFileVersion(version, true, Optional.empty());
-    }
-
-    @Test
-    // 27
-    @Parameter(value = {"27", "27.0.0.0"}, ifOS = WINDOWS)
-    // 27.1.2
-    @Parameter(value = {"27.1.2", "27.1.2.0"}, ifOS = WINDOWS)
-    // 27.1.2.3
     @Parameter(value = {"27.1.2.3", "27.1.2"}, ifOS = MACOS)
     // 27.1.2.3.4
+    @Parameter(value = {"27.1.2.3.4"}, ifOS = LINUX)
     @Parameter(value = {"27.1.2.3.4", "27.1.2"}, ifOS = MACOS)
     @Parameter(value = {"27.1.2.3.4", "27.1.2.3"}, ifOS = WINDOWS)
     // 17.21.3-ea
     @Parameter(value = {"17.21.3-ea", "17.21.3"}, ifOS = MACOS)
     @Parameter(value = {"17.21.3-ea", "17.21.3.0"}, ifOS = WINDOWS)
-    public static void testValidReleaseFileVersion(String version, String normalizedVersion) {
-        testReleaseFileVersion(version, true, Optional.of(normalizedVersion));
+    public static void testValidReleaseFileVersion(String version, String... appVersion) {
+        if (version.equals("1.0")) {
+            // This is a special case of the default app version. Don't use it as a test input.
+            throw new IllegalArgumentException();
+        }
+        if (appVersion.length == 0) {
+            testReleaseFileVersion(version, false, Optional.of(version));
+        } else {
+            boolean isValid = !appVersion[0].equals("1.0");
+            testReleaseFileVersion(version, isValid, Optional.of(appVersion[0]));
+        }
     }
 
     private static void testReleaseFileVersion(String version,
@@ -196,14 +192,24 @@ public class RuntimePackageTest {
 
             // Validate output only if release version is valid for release file
             if (validReleaseFileVersion) {
-                cmd.validateOutput(JPackageStringBundle.MAIN
+                var releaseVersionStr = JPackageStringBundle.MAIN
                         .cannedFormattedString("message.release-version",
-                        version, runtimeImage.toString()));
+                        version, runtimeImage.toString());
+                new JPackageOutputValidator()
+                        .expectMatchingStrings(releaseVersionStr)
+                        .matchTimestamps()
+                        .stripTimestamps()
+                        .applyTo(cmd);
                 // Normalization message is only printed if we did normalization.
                 normalizedVersion.ifPresent(nv -> {
-                    cmd.validateOutput(JPackageStringBundle.MAIN
-                        .cannedFormattedString("message.version-normalized",
-                        nv, version));
+                    var versionNormalizedStr = JPackageStringBundle.MAIN
+                            .cannedFormattedString("message.version-normalized",
+                            nv, version);
+                    new JPackageOutputValidator()
+                            .expectMatchingStrings(versionNormalizedStr)
+                            .matchTimestamps()
+                            .stripTimestamps()
+                            .applyTo(cmd);
                 });
             }
         })

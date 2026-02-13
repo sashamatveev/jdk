@@ -43,8 +43,6 @@ import static jdk.jpackage.internal.cli.StandardOption.WIN_UPDATE_URL;
 import static jdk.jpackage.internal.cli.StandardOption.WIN_UPGRADE_UUID;
 import static jdk.jpackage.internal.model.StandardPackageType.WIN_MSI;
 
-import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.function.UnaryOperator;
 
 import jdk.jpackage.internal.cli.Options;
@@ -130,11 +128,11 @@ final class WinFromOptions {
     }
 
     static String normalizeVersion(String version) {
-        // Windows requires 2 or 4 components version string.
+        // Windows requires between 2 and 4 components version string.
         // When reading from release file it can be 1 or 3 or maybe more.
         // We will always normalize to 4 components if needed.
         DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() != 2 && ver.getComponentsCount() != 4) {
+        if (ver.getComponentsCount() < 2 || ver.getComponentsCount() > 4) {
             return ver.trim(4).pad(4).toComponentsString();
         } else {
             // We should drop any characters. For example: "-ea".
