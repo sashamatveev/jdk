@@ -25,9 +25,7 @@
 
 package jdk.jpackage.internal.util;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import jdk.internal.util.OperatingSystem;
 
 public final class RuntimeImageUtils {
 

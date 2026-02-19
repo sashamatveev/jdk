@@ -45,10 +45,7 @@ import static jdk.jpackage.internal.cli.StandardOption.PREDEFINED_RUNTIME_IMAGE;
 import static jdk.jpackage.internal.cli.StandardOption.RESOURCE_DIR;
 import static jdk.jpackage.internal.cli.StandardOption.VENDOR;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;

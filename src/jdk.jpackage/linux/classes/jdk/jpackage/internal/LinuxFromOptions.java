@@ -39,7 +39,6 @@ import static jdk.jpackage.internal.cli.StandardOption.LINUX_RPM_LICENSE_TYPE;
 import static jdk.jpackage.internal.cli.StandardOption.LINUX_SHORTCUT_HINT;
 import static jdk.jpackage.internal.model.StandardPackageType.LINUX_DEB;
 import static jdk.jpackage.internal.model.StandardPackageType.LINUX_RPM;
-import java.util.Optional;
 import jdk.jpackage.internal.cli.Options;
 import jdk.jpackage.internal.model.DottedVersion;
 import jdk.jpackage.internal.model.Launcher;

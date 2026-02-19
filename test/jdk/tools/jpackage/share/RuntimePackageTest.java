@@ -26,7 +26,6 @@ import static jdk.internal.util.OperatingSystem.MACOS;
 import static jdk.internal.util.OperatingSystem.WINDOWS;
 import static jdk.jpackage.test.TKit.assertFalse;
 import static jdk.jpackage.test.TKit.assertTrue;
-import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -134,8 +133,7 @@ public class RuntimePackageTest {
     @Parameter(value = {"", "1.0"})
     @Parameter(value = {"17.21.3+foo", "1.0"})
     // 27
-    @Parameter(value = {"27"}, ifOS = {LINUX, MACOS})
-    @Parameter(value = {"27", "27.0.0.0"}, ifOS = WINDOWS)
+    @Parameter(value = {"27"})
     // 27.1
     @Parameter(value = {"27.1"})
     // 27.1.2
@@ -148,8 +146,7 @@ public class RuntimePackageTest {
     @Parameter(value = {"27.1.2.3.4", "27.1.2"}, ifOS = MACOS)
     @Parameter(value = {"27.1.2.3.4", "27.1.2.3"}, ifOS = WINDOWS)
     // 17.21.3-ea
-    @Parameter(value = {"17.21.3-ea", "17.21.3"}, ifOS = MACOS)
-    @Parameter(value = {"17.21.3-ea", "17.21.3.0"}, ifOS = WINDOWS)
+    @Parameter(value = {"17.21.3-ea", "17.21.3"}, ifOS = {MACOS, WINDOWS})
     public static void testValidReleaseFileVersion(String version, String... appVersion) {
         if (version.equals("1.0")) {
             // This is a special case of the default app version. Don't use it as a test input.

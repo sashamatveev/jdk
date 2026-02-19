@@ -29,11 +29,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Method;
-import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -60,12 +58,7 @@ public class WindowsHelper {
     static String getNormalizedVersion(String version) {
         // Windows requires between 2 and 4 components version string.
         // We will always normalize to 4 components if needed.
-        DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() < 2 || ver.getComponentsCount() > 4) {
-            return ver.trim(4).pad(4).toComponentsString();
-        } else {
-            return ver.toComponentsString();
-        }
+        return DottedVersion.lazy(version).trim(4).pad(2).toComponentsString();
     }
 
     static Path getInstallationDirectory(JPackageCommand cmd) {

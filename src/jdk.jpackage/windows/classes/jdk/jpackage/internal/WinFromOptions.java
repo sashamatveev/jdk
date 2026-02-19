@@ -26,7 +26,6 @@ package jdk.jpackage.internal;
 
 import static jdk.jpackage.internal.FromOptions.buildApplicationBuilder;
 import static jdk.jpackage.internal.FromOptions.createPackageBuilder;
-import static jdk.jpackage.internal.OptionUtils.isRuntimeInstaller;
 import static jdk.jpackage.internal.WinPackagingPipeline.APPLICATION_LAYOUT;
 import static jdk.jpackage.internal.cli.StandardOption.APP_VERSION;
 import static jdk.jpackage.internal.cli.StandardOption.ICON;
@@ -43,10 +42,7 @@ import static jdk.jpackage.internal.cli.StandardOption.WIN_UPDATE_URL;
 import static jdk.jpackage.internal.cli.StandardOption.WIN_UPGRADE_UUID;
 import static jdk.jpackage.internal.model.StandardPackageType.WIN_MSI;
 
-import java.util.function.UnaryOperator;
-
 import jdk.jpackage.internal.cli.Options;
-import jdk.jpackage.internal.model.Application;
 import jdk.jpackage.internal.model.DottedVersion;
 import jdk.jpackage.internal.model.Launcher;
 import jdk.jpackage.internal.model.WinApplication;
@@ -131,12 +127,6 @@ final class WinFromOptions {
         // Windows requires between 2 and 4 components version string.
         // When reading from release file it can be 1 or 3 or maybe more.
         // We will always normalize to 4 components if needed.
-        DottedVersion ver = DottedVersion.lazy(version);
-        if (ver.getComponentsCount() < 2 || ver.getComponentsCount() > 4) {
-            return ver.trim(4).pad(4).toComponentsString();
-        } else {
-            // We should drop any characters. For example: "-ea".
-            return ver.toComponentsString();
-        }
+        return DottedVersion.lazy(version).trim(4).pad(2).toComponentsString();
     }
 }
